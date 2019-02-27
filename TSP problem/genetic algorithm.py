@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 class City():
     idx = 0
@@ -18,8 +19,8 @@ class Chromosome():
     def greedyInit(self, length):
         pass
 
-def func(x):
-    return x**2
+    def setGene(self, gene):
+        self.gene = gene
 
 def distance(c1, c2):
     dsts = 0
@@ -29,41 +30,88 @@ def distance(c1, c2):
 
 def evaluate(p):
     score = 0
-    for i, g in enumerate(p.gene):
-        score += adj[i-1, i]
+    for i in range(p.length):
+        c1 = cities[p.gene[i-1]]
+        c2 = cities[p.gene[i]]
+        score += distance(c1, c2)
     p.score = score
 
-def select():
+def select(num, pop):
     seletedGroup = []
     # 轮盘赌方法
     sum = 0
     for p in pop:
-        sum += p.score
+        sum += 1/p.score
     for i in range(selectSize):
         randnum = np.random.rand() * sum
-        for i in range()
-        seletedGroup.append(pop[int(randnum)])
+        number = 0
+        for p in pop:
+            if number <= randnum and number + p.score > randnum:
+                seletedGroup.append(p)
+                break
+            number += 1/p.score
 
     return seletedGroup
 
-def crossover(k, p):
+def crossover(p1, p2, k = 2):
     # k-points crossover
     # 安全检查，基因长度是否大于k
-    pos = np.random.randint() *
-    pass
+    if k > 100:
+        print("k is {0}, gene length is {1}".format(k, p1.length))
+        exit(-1)
+    pos = [0]
+    for i in range(k):
+        if pos[i] + 1 == p1.length:
+            break
+        temp = np.random.randint(pos[i]+1, p1.length) # here there may be a lot of p1.gene in p
+        pos.append(temp)
+    # 交叉奇数段
+    newGene1 = []
+    newGene2 = []
+    for i in range(p1.length):
+        if i in pos and i % 2 == 1:
+            newGene1.append(p2.gene[i])
+            newGene2.append(p1.gene[i])
+            for j in range(i):
+                if newGene1[j] == newGene1[-1]:
+                    newGene1[j] = p1.gene[i]
+                if newGene2[j] == newGene2[-1]:
+                    newGene2[j] = p2.gene[i]
+        else:
+            newGene1.append(p1.gene[i])
+            newGene2.append(p2.gene[i])
+
+    newChrom1 = Chromosome(p1.length)
+    newChrom1.setGene(newGene1)
+    evaluate(newChrom1)
+    newChrom2 = Chromosome(p2.length)
+    newChrom2.setGene(newGene2)
+    evaluate(newChrom2)
+
+    return newChrom1, newChrom2
 
 def mutation(p):
-    pass
+    pos1 = np.random.randint(0, p.length)
+    if pos1+1 == p.length:
+        pos2 = pos1
+    else:
+        pos2 = np.random.randint(pos1+1, p.length)
+    tmp = p.gene[pos1]
+    p.gene[pos1] = p.gene[pos2]
+    p.gene[pos2] = tmp
 
 def multiplication(parents):
-    pass
+    return crossover(parents[0], parents[1])
 
-def elimination(offspring, pop):
-    pass
+def elimination(pop):
+    pop.sort(key=lambda x:x.score)
+    while len(pop) > popSize:
+        pop.pop()
 
 def init():
     # 存储城市坐标
-    with open("TSP坐标.csv", 'r') as f:
+    with open("TSP.csv", 'r', encoding="cp936") as f:
+        print(os.getcwd())
         for line in f.readlines():
             loc = line.split(',')
             for i, l in enumerate(loc):
@@ -79,27 +127,39 @@ def init():
             adj[i, j] = distance(cities[i], cities[j])
             adj[j, i] = adj[i, j]
 
+def outputInfo(genera):
+    print("generation: {0}".format(genera))
+    print(pop[0].gene)
+    print(pop[0].score)
+
 if __name__ == "__main__":
     ##############################################
-    popSize = 10
-    generation = 100
+    popSize = 50
+    generation = 1000
     selectSize = 2
     lowerBound = 0
     upperBound = 31 + 1
     dim = 2
     cityNum = 100
+    muRate = 0.02
     ##############################################
     cities = []
     pop = []
-    adj = np.zeros(cityNum, cityNum)
-    init(popSize)
+    adj = np.zeros((cityNum, cityNum))
+    init()
+    # evaluate
+    for i in range(popSize):
+        evaluate(pop[i])
     for i in range(generation):
-        # evaluate
-        for j in range(popSize):
-            evaluate(pop[j])
         # select
-        parents = select(selectSize, pop)
-        # generate offspring
-        offspring = multiplication(parents)
+        for j in range(selectSize):
+            parents = select(2, pop[0:popSize])
+            # generate offspring
+            for offs in multiplication(parents):
+                if np.random.rand() < muRate:
+                    mutation(offs)
+                pop.append(offs)
         # eliminate
-        pop = elimination(offspring, pop)
+        elimination(pop)
+        outputInfo(i)
+
