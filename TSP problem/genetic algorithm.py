@@ -33,7 +33,7 @@ def evaluate(p):
     for i in range(p.length):
         c1 = cities[p.gene[i-1]]
         c2 = cities[p.gene[i]]
-        score += distance(c1, c2)
+        score += adj[c1.idx, c2.idx]
     p.score = score
 
 def select(num, pop):
@@ -42,16 +42,32 @@ def select(num, pop):
     sum = 0
     for p in pop:
         sum += 1/p.score
-    for i in range(selectSize):
+    # for p in pop:
+    #     print(p.score, ": ", 1/p.score, ",", (1/p.score)/sum)
+    for i in range(num):
         randnum = np.random.rand() * sum
         number = 0
         for p in pop:
-            if number <= randnum and number + p.score > randnum:
+            if number <= randnum and number + 1/p.score > randnum:
                 seletedGroup.append(p)
                 break
             number += 1/p.score
 
     return seletedGroup
+
+def rankBasedSelect(num, pop):
+    selectedGroup = []
+    rang = len(pop) * (len(pop) + 1) / 2
+    for i in range(num):
+        # rand为0-range的随机数
+        rand = np.random.rand() * rang
+        # 在整个range中j占比∑(1~j-1)-∑(1~j)部分
+        # 对rand反向求是哪个数累加而成再加1即实现按照排序选择的功能
+        p = int((np.sqrt(8 * rand + 1) - 1) / 2) + 1
+        selectedGroup.append(pop[len(pop) - p])
+
+    return selectedGroup
+
 
 def crossover(p1, p2, k = 2):
     # k-points crossover
@@ -134,14 +150,15 @@ def outputInfo(genera):
 
 if __name__ == "__main__":
     ##############################################
-    popSize = 50
-    generation = 1000
+    popSize = 100
+    generation = 3000
     selectSize = 2
     lowerBound = 0
     upperBound = 31 + 1
     dim = 2
     cityNum = 100
-    muRate = 0.02
+    muRate = 0.15
+    parentSize = 20
     ##############################################
     cities = []
     pop = []
@@ -150,10 +167,12 @@ if __name__ == "__main__":
     # evaluate
     for i in range(popSize):
         evaluate(pop[i])
+    pop.sort(key=lambda x: x.score)
     for i in range(generation):
         # select
-        for j in range(selectSize):
-            parents = select(2, pop[0:popSize])
+        for j in range(parentSize):
+            # parents = select(selectSize, pop[0:popSize])
+            parents = rankBasedSelect(selectSize, pop[0:popSize])
             # generate offspring
             for offs in multiplication(parents):
                 if np.random.rand() < muRate:
