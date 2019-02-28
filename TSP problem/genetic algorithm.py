@@ -32,9 +32,7 @@ def distance(c1, c2):
 def evaluate(p):
     score = 0
     for i in range(p.length):
-        c1 = cities[p.gene[i-1]]
-        c2 = cities[p.gene[i]]
-        score += adj[c1.idx, c2.idx]
+        score += adj[p.gene[i-1], p.gene[i]]
     p.score = score
 
 def select(num, pop):
@@ -97,6 +95,10 @@ def crossover(p1, p2, k = 2):
                 if newGene2[j] == newGene2[i] and j != i:
                     newGene2[j] = p2.gene[i]
 
+    for i in range(cityNum):
+        if newGene1.count(i) > 1 or newGene2.count(i) > 1:
+            print("newGene mis")
+
     newChrom1 = Chromosome(p1.length)
     newChrom1.setGene(newGene1)
     evaluate(newChrom1)
@@ -107,18 +109,29 @@ def crossover(p1, p2, k = 2):
     return newChrom1, newChrom2
 
 def crossover2(p1, p2):
-    pos = random.sample(list(range(1,100)), 2)
+    pos = random.sample(list(range(1,cityNum)), 2)
     pos.sort()
     newGene1 = copy.deepcopy(p1.gene)
     newGene2 = copy.deepcopy(p2.gene)
+    exchange1 = [] # gene1有，gene2中没有的
+    exchange2 = [] # gene2有，gene1中没有的
     for i in range(pos[0], pos[1]+1):
         newGene1[i] = p2.gene[i]
         newGene2[i] = p1.gene[i]
-        for j in range(p1.length):
-            if newGene1[j] == newGene1[i] and j != i:
-                newGene1[j] = p1.gene[i]
-            if newGene2[j] == newGene2[i] and j != i:
-                newGene2[j] = p2.gene[i]
+    for i in range(pos[0], pos[1]+1):
+        if newGene1[pos[0], pos[1]+1].count(newGene2[i]) == 0:
+            exchange2.append(newGene2[i])
+        if newGene2[pos[0], pos[1]+1].count(newGene1[i]) == 0:
+            exchange1.append(newGene1[i])
+    for i in range(0, pos[0]):
+        if exchange1.count(newGene1[i]) == 1:
+            newGene1[i] = exchange2[exchange1.index(newGene1[i])]
+        if exchange2.count(newGene2[i]) == 1:
+            newGene2[i] = exchange1[exchange2.index(newGene2[i])]
+    for k in range(cityNum):
+        if newGene1.count(k) > 1 or newGene2.count(k) > 1:
+            print("newGene mis")
+
 
     newChrom1 = Chromosome(p1.length)
     newChrom1.setGene(newGene1)
@@ -130,14 +143,13 @@ def crossover2(p1, p2):
     return newChrom1, newChrom2
 
 def mutation(p):
-    pos1 = np.random.randint(0, p.length)
-    if pos1+1 < p.length:
-        pos2 = np.random.randint(pos1 + 1, p.length)
-        tmp = p.gene[pos1]
-        p.gene[pos1] = p.gene[pos2]
-        p.gene[pos2] = tmp
-    else:
-        pass
+    pos = random.sample(list(range(1, cityNum)), 2)
+    tmp = p.gene[pos[0]]
+    p.gene[pos[0]] = p.gene[pos[1]]
+    p.gene[pos[1]] = tmp
+    # for i in range(cityNum):
+    #     if p.gene.count(i) > 1:
+    #         print("newGene mis")
 
 
 def multiplication(parents):
@@ -152,7 +164,9 @@ def init():
     # 存储城市坐标
     with open("TSP.csv", 'r', encoding="cp936") as f:
         print(os.getcwd())
-        for line in f.readlines():
+        # for line in f.readlines():
+        for i in range(cityNum):
+            line = f.readline()
             loc = line.split(',')
             for i, l in enumerate(loc):
                 loc[i] = float(l)
@@ -180,7 +194,7 @@ if __name__ == "__main__":
     lowerBound = 0
     upperBound = 31 + 1
     dim = 2
-    cityNum = 100
+    cityNum = 10
     muRate = 0.15
     parentSize = 20
     ##############################################
