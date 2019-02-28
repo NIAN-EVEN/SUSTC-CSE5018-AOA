@@ -1,5 +1,6 @@
 import numpy as np
-import os
+import os, random
+import copy
 
 class City():
     idx = 0
@@ -75,27 +76,49 @@ def crossover(p1, p2, k = 2):
     if k > 100:
         print("k is {0}, gene length is {1}".format(k, p1.length))
         exit(-1)
-    pos = [0]
-    for i in range(k):
-        if pos[i] + 1 == p1.length:
-            break
-        temp = np.random.randint(pos[i]+1, p1.length) # here there may be a lot of p1.gene in p
-        pos.append(temp)
+    pos = random.sample(list(range(1,101)), k)
+    pos.append(0)
+    pos.sort()
     # 交叉奇数段
-    newGene1 = []
-    newGene2 = []
+    newGene1 = copy.deepcopy(p1.gene)
+    newGene2 = copy.deepcopy(p2.gene)
+    flag = 0
     for i in range(p1.length):
-        if i in pos and i % 2 == 1:
-            newGene1.append(p2.gene[i])
-            newGene2.append(p1.gene[i])
-            for j in range(i):
-                if newGene1[j] == newGene1[-1]:
+        if i in pos and pos.index(i) % 2 == 1:
+            flag = 1
+        if i in pos and pos.index(i) % 2 == 0:
+            flag = 0
+        if flag == 1:
+            newGene1[i] = p2.gene[i]
+            newGene2[i] = p1.gene[i]
+            for j in range(p1.length):
+                if newGene1[j] == newGene1[i] and j != i:
                     newGene1[j] = p1.gene[i]
-                if newGene2[j] == newGene2[-1]:
+                if newGene2[j] == newGene2[i] and j != i:
                     newGene2[j] = p2.gene[i]
-        else:
-            newGene1.append(p1.gene[i])
-            newGene2.append(p2.gene[i])
+
+    newChrom1 = Chromosome(p1.length)
+    newChrom1.setGene(newGene1)
+    evaluate(newChrom1)
+    newChrom2 = Chromosome(p2.length)
+    newChrom2.setGene(newGene2)
+    evaluate(newChrom2)
+
+    return newChrom1, newChrom2
+
+def crossover2(p1, p2):
+    pos = random.sample(list(range(1,100)), 2)
+    pos.sort()
+    newGene1 = copy.deepcopy(p1.gene)
+    newGene2 = copy.deepcopy(p2.gene)
+    for i in range(pos[0], pos[1]+1):
+        newGene1[i] = p2.gene[i]
+        newGene2[i] = p1.gene[i]
+        for j in range(p1.length):
+            if newGene1[j] == newGene1[i] and j != i:
+                newGene1[j] = p1.gene[i]
+            if newGene2[j] == newGene2[i] and j != i:
+                newGene2[j] = p2.gene[i]
 
     newChrom1 = Chromosome(p1.length)
     newChrom1.setGene(newGene1)
@@ -108,16 +131,17 @@ def crossover(p1, p2, k = 2):
 
 def mutation(p):
     pos1 = np.random.randint(0, p.length)
-    if pos1+1 == p.length:
-        pos2 = pos1
+    if pos1+1 < p.length:
+        pos2 = np.random.randint(pos1 + 1, p.length)
+        tmp = p.gene[pos1]
+        p.gene[pos1] = p.gene[pos2]
+        p.gene[pos2] = tmp
     else:
-        pos2 = np.random.randint(pos1+1, p.length)
-    tmp = p.gene[pos1]
-    p.gene[pos1] = p.gene[pos2]
-    p.gene[pos2] = tmp
+        pass
+
 
 def multiplication(parents):
-    return crossover(parents[0], parents[1])
+    return crossover2(parents[0], parents[1])
 
 def elimination(pop):
     pop.sort(key=lambda x:x.score)
@@ -150,8 +174,8 @@ def outputInfo(genera):
 
 if __name__ == "__main__":
     ##############################################
-    popSize = 100
-    generation = 3000
+    popSize = 1000
+    generation = 300000
     selectSize = 2
     lowerBound = 0
     upperBound = 31 + 1
