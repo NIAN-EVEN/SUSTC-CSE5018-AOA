@@ -33,6 +33,8 @@ def getAdjMatrix(city):
     return adj
 
 def evaluateOrder(order, adj):
+    f = sys._getframe()
+    sys.stderr.write(f.stack)
     score = 0
     for i in range(len(order)):
         score += adj[order[i-1], order[i]]
@@ -41,7 +43,9 @@ def evaluateOrder(order, adj):
 def errorDetect(order):
     for o in order:
         if order.count(o) > 1:
-            f = sys._frames()
+            f = sys._getframe()
+            for sta in f.stack:
+                sys.stderr.write(sta)
             sys.stderr.write("wrong order\n")
             exit(-1)
 

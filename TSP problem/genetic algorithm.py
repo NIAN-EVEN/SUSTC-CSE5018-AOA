@@ -5,11 +5,6 @@ from TSP import *
 群体的iterative local search, 就是演化算法
 '''
 
-class City():
-    def __init__(self, idx, loc):
-        self.loc = loc
-        self.idx = idx
-
 class Chromosome():
     def __init__(self, length):
         self.length = length
@@ -42,8 +37,6 @@ def select(num, pop):
     sum = 0
     for p in pop:
         sum += 1/p.score
-    # for p in pop:
-    #     print(p.score, ": ", 1/p.score, ",", (1/p.score)/sum)
     for i in range(num):
         randnum = np.random.rand() * sum
         number = 0
@@ -152,6 +145,7 @@ def outputInfo(genera):
     print("generation: {0}".format(genera))
     print(pop[0].gene)
     print(pop[0].score)
+
 
 if __name__ == "__main__":
     ##############################################
