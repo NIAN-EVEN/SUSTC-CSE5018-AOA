@@ -1,13 +1,14 @@
-import numpy as np
-import os, random
-import copy
+from TSP import *
+
+'''
+单独存储一个list记录每一代最好的个体，每一代结束后都进行一遍localsearch
+群体的iterative local search, 就是演化算法
+'''
 
 class City():
-    idx = 0
-    def __init__(self, loc):
+    def __init__(self, idx, loc):
         self.loc = loc
-        self.idx = City.idx
-        City.idx += 1
+        self.idx = idx
 
 class Chromosome():
     def __init__(self, length):
@@ -67,49 +68,8 @@ def rankBasedSelect(num, pop):
 
     return selectedGroup
 
-
-def crossover(p1, p2, k = 2):
-    # k-points crossover
-    # 安全检查，基因长度是否大于k
-    if k > 100:
-        print("k is {0}, gene length is {1}".format(k, p1.length))
-        exit(-1)
-    pos = random.sample(list(range(1,101)), k)
-    pos.append(0)
-    pos.sort()
-    # 交叉奇数段
-    newGene1 = copy.deepcopy(p1.gene)
-    newGene2 = copy.deepcopy(p2.gene)
-    flag = 0
-    for i in range(p1.length):
-        if i in pos and pos.index(i) % 2 == 1:
-            flag = 1
-        if i in pos and pos.index(i) % 2 == 0:
-            flag = 0
-        if flag == 1:
-            newGene1[i] = p2.gene[i]
-            newGene2[i] = p1.gene[i]
-            for j in range(p1.length):
-                if newGene1[j] == newGene1[i] and j != i:
-                    newGene1[j] = p1.gene[i]
-                if newGene2[j] == newGene2[i] and j != i:
-                    newGene2[j] = p2.gene[i]
-
-    for i in range(cityNum):
-        if newGene1.count(i) > 1 or newGene2.count(i) > 1:
-            print("newGene mis")
-
-    newChrom1 = Chromosome(p1.length)
-    newChrom1.setGene(newGene1)
-    evaluate(newChrom1)
-    newChrom2 = Chromosome(p2.length)
-    newChrom2.setGene(newGene2)
-    evaluate(newChrom2)
-
-    return newChrom1, newChrom2
-
-def crossover2(p1, p2):
-    pos = random.sample(list(range(1,cityNum)), 2)
+def crossover(p1, p2):
+    pos = random.sample(list(range(1, cityNum)), 2)
     pos.sort()
     newGene1 = copy.deepcopy(p1.gene)
     newGene2 = copy.deepcopy(p2.gene)
@@ -119,19 +79,25 @@ def crossover2(p1, p2):
         newGene1[i] = p2.gene[i]
         newGene2[i] = p1.gene[i]
     for i in range(pos[0], pos[1]+1):
-        if newGene1[pos[0], pos[1]+1].count(newGene2[i]) == 0:
+        if newGene1[pos[0]: pos[1]+1].count(newGene2[i]) == 0:
             exchange2.append(newGene2[i])
-        if newGene2[pos[0], pos[1]+1].count(newGene1[i]) == 0:
+        if newGene2[pos[0]: pos[1]+1].count(newGene1[i]) == 0:
             exchange1.append(newGene1[i])
     for i in range(0, pos[0]):
-        if exchange1.count(newGene1[i]) == 1:
+        if newGene1[pos[0]: pos[1]+1].count(newGene1[i]) == 1:
             newGene1[i] = exchange2[exchange1.index(newGene1[i])]
-        if exchange2.count(newGene2[i]) == 1:
+        if newGene2[pos[0]: pos[1]+1].count(newGene2[i]) == 1:
             newGene2[i] = exchange1[exchange2.index(newGene2[i])]
+    if pos[1]+1 <= p1.length:
+        for i in range(pos[1]+1, p1.length):
+            if newGene1[pos[0]: pos[1] + 1].count(newGene1[i]) == 1:
+                newGene1[i] = exchange2[exchange1.index(newGene1[i])]
+            if newGene2[pos[0]: pos[1] + 1].count(newGene2[i]) == 1:
+                newGene2[i] = exchange1[exchange2.index(newGene2[i])]
     for k in range(cityNum):
         if newGene1.count(k) > 1 or newGene2.count(k) > 1:
             print("newGene mis")
-
+            exit(-1)
 
     newChrom1 = Chromosome(p1.length)
     newChrom1.setGene(newGene1)
@@ -147,13 +113,10 @@ def mutation(p):
     tmp = p.gene[pos[0]]
     p.gene[pos[0]] = p.gene[pos[1]]
     p.gene[pos[1]] = tmp
-    # for i in range(cityNum):
-    #     if p.gene.count(i) > 1:
-    #         print("newGene mis")
 
 
 def multiplication(parents):
-    return crossover2(parents[0], parents[1])
+    return crossover(parents[0], parents[1])
 
 def elimination(pop):
     pop.sort(key=lambda x:x.score)
@@ -162,7 +125,7 @@ def elimination(pop):
 
 def init():
     # 存储城市坐标
-    with open("TSP.csv", 'r', encoding="cp936") as f:
+    with open("TSP.csv", 'r') as f:
         print(os.getcwd())
         # for line in f.readlines():
         for i in range(cityNum):
@@ -181,6 +144,10 @@ def init():
             adj[i, j] = distance(cities[i], cities[j])
             adj[j, i] = adj[i, j]
 
+    # evaluate
+    for i in range(popSize):
+        evaluate(pop[i])
+
 def outputInfo(genera):
     print("generation: {0}".format(genera))
     print(pop[0].gene)
@@ -194,17 +161,15 @@ if __name__ == "__main__":
     lowerBound = 0
     upperBound = 31 + 1
     dim = 2
-    cityNum = 10
+    cityNum = 100
     muRate = 0.15
-    parentSize = 20
+    parentSize = 100
+    bestScore = 20000
     ##############################################
     cities = []
     pop = []
     adj = np.zeros((cityNum, cityNum))
     init()
-    # evaluate
-    for i in range(popSize):
-        evaluate(pop[i])
     pop.sort(key=lambda x: x.score)
     for i in range(generation):
         # select
@@ -218,5 +183,7 @@ if __name__ == "__main__":
                 pop.append(offs)
         # eliminate
         elimination(pop)
-        outputInfo(i)
+        if pop[0].score < bestScore:
+            outputInfo(i)
+            bestScore = pop[0].score
 
