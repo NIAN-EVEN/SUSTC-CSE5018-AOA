@@ -1,35 +1,13 @@
+import numpy as np
+import random, copy, time
+from itertools import combinations
 from TSP import *
-
+from localSearch import *
+from greedy import *
 '''
 单独存储一个list记录每一代最好的个体，每一代结束后都进行一遍localsearch
 群体的iterative local search, 就是演化算法
 '''
-
-class Chromosome():
-    def __init__(self, length):
-        self.length = length
-        self.gene = self.randomInit()
-
-    def randomInit(self):
-        return np.random.permutation(self.length).tolist()
-
-    def greedyInit(self, length):
-        pass
-
-    def setGene(self, gene):
-        self.gene = gene
-
-def distance(c1, c2):
-    dsts = 0
-    for x1, x2 in zip(c1.loc, c2.loc):
-        dsts += (x1 - x2)**2
-    return np.sqrt(dsts)
-
-def evaluate(p):
-    score = 0
-    for i in range(p.length):
-        score += adj[p.gene[i-1], p.gene[i]]
-    p.score = score
 
 def select(num, pop):
     seletedGroup = []
@@ -61,123 +39,113 @@ def rankBasedSelect(num, pop):
 
     return selectedGroup
 
-def crossover(p1, p2):
-    pos = random.sample(list(range(1, cityNum)), 2)
-    pos.sort()
-    newGene1 = copy.deepcopy(p1.gene)
-    newGene2 = copy.deepcopy(p2.gene)
+def crossover(order1, order2, crossSize):
+    cityNum = len(order1)
+    # 因为是排序问题，所以一定是成段基因含有有效信息，离散基因无效
+    pos = [np.random.randint(cityNum)]
+    pos.insert(0, cityNum-crossSize)
+    
+    newOrder1 = copy.deepcopy(order1)
+    newOrder2 = copy.deepcopy(order2)
     exchange1 = [] # gene1有，gene2中没有的
     exchange2 = [] # gene2有，gene1中没有的
-    for i in range(pos[0], pos[1]+1):
-        newGene1[i] = p2.gene[i]
-        newGene2[i] = p1.gene[i]
-    for i in range(pos[0], pos[1]+1):
-        if newGene1[pos[0]: pos[1]+1].count(newGene2[i]) == 0:
-            exchange2.append(newGene2[i])
-        if newGene2[pos[0]: pos[1]+1].count(newGene1[i]) == 0:
-            exchange1.append(newGene1[i])
-    for i in range(0, pos[0]):
-        if newGene1[pos[0]: pos[1]+1].count(newGene1[i]) == 1:
-            newGene1[i] = exchange2[exchange1.index(newGene1[i])]
-        if newGene2[pos[0]: pos[1]+1].count(newGene2[i]) == 1:
-            newGene2[i] = exchange1[exchange2.index(newGene2[i])]
-    if pos[1]+1 <= p1.length:
-        for i in range(pos[1]+1, p1.length):
-            if newGene1[pos[0]: pos[1] + 1].count(newGene1[i]) == 1:
-                newGene1[i] = exchange2[exchange1.index(newGene1[i])]
-            if newGene2[pos[0]: pos[1] + 1].count(newGene2[i]) == 1:
-                newGene2[i] = exchange1[exchange2.index(newGene2[i])]
-    for k in range(cityNum):
-        if newGene1.count(k) > 1 or newGene2.count(k) > 1:
-            print("newGene mis")
-            exit(-1)
+    # 交叉
+    for i in range(pos[0], pos[1]):
+        newOrder1[i] = order1[i]
+        newOrder2[i] = order2[i]
+    # 计算缺省对应关系
+    for i in range(pos[0], pos[1]):
+        if newOrder1[pos[0]: pos[1]].count(newOrder2[i]) == 0:
+            exchange2.append(newOrder2[i])
+        if newOrder2[pos[0]: pos[1]].count(newOrder1[i]) == 0:
+            exchange1.append(newOrder1[i])
+    if pos[0] >=0 :
+        for i in range(0, pos[0]):
+            if newOrder1[pos[0]: pos[1]].count(newOrder1[i]) == 1:
+                newOrder1[i] = exchange2[exchange1.index(newOrder1[i])]
+            if newOrder2[pos[0]: pos[1]].count(newOrder2[i]) == 1:
+                newOrder2[i] = exchange1[exchange2.index(newOrder2[i])]
+        for i in range(pos[1], cityNum):
+            if newOrder1[pos[0]: pos[1]].count(newOrder1[i]) == 1:
+                newOrder1[i] = exchange2[exchange1.index(newOrder1[i])]
+            if newOrder2[pos[0]: pos[1]].count(newOrder2[i]) == 1:
+                newOrder2[i] = exchange1[exchange2.index(newOrder2[i])]
+    else:
+        # 因为涉及到完整保留的问题，所以交换互补段不一样
+        for i in range(pos[1], pos[0] + cityNum):
+            if newOrder1[pos[0]: pos[1]].count(newOrder1[i]) == 1:
+                newOrder1[i] = exchange2[exchange1.index(newOrder1[i])]
+            if newOrder2[pos[0]: pos[1]].count(newOrder2[i]) == 1:
+                newOrder2[i] = exchange1[exchange2.index(newOrder2[i])]
 
-    newChrom1 = Chromosome(p1.length)
-    newChrom1.setGene(newGene1)
-    evaluate(newChrom1)
-    newChrom2 = Chromosome(p2.length)
-    newChrom2.setGene(newGene2)
-    evaluate(newChrom2)
+    errorDetect(newOrder1)
+    errorDetect(newOrder2)
+
+    newChrom1 = Solution(newOrder1)
+    newChrom2 = Solution(newOrder2)
 
     return newChrom1, newChrom2
 
-def mutation(p):
-    pos = random.sample(list(range(1, cityNum)), 2)
-    tmp = p.gene[pos[0]]
-    p.gene[pos[0]] = p.gene[pos[1]]
-    p.gene[pos[1]] = tmp
-
-
-def multiplication(parents):
-    return crossover(parents[0], parents[1])
+def reproduction(parents, adj):
+    newSolution1, newSolution2 = crossover(parents[0].order, parents[1].order)
+    return iterativeLocalSearch(newSolution1, adj), iterativeLocalSearch(newSolution2, adj)
 
 def elimination(pop):
     pop.sort(key=lambda x:x.score)
-    while len(pop) > popSize:
+    while len(pop) > POPSIZE:
         pop.pop()
 
-def init():
-    # 存储城市坐标
-    with open("TSP.csv", 'r') as f:
-        print(os.getcwd())
-        # for line in f.readlines():
-        for i in range(cityNum):
-            line = f.readline()
-            loc = line.split(',')
-            for i, l in enumerate(loc):
-                loc[i] = float(l)
-            cities.append(City(loc))
-    # 初始化种群
+def init(filename, cityNum, popSize):
+    city = loadCity(filename, cityNum)
+    adj = getAdjMatrix(city)
+    # TODO: greedy local init
+    # order = greedyTSP(city, adj)
+    # randomly init
+    pop = []
     for i in range(popSize):
-        pop.append(Chromosome(cityNum))
+        order = np.random.permutation(cityNum).tolist()
+        solution = iterativeLocalSearch(Solution(order, adj), adj)
+        pop.append(solution)
+    pop.sort(key=lambda x:x.score)
 
-    # 计算邻接矩阵
-    for i in range(cityNum):
-        for j in range(i, cityNum):
-            adj[i, j] = distance(cities[i], cities[j])
-            adj[j, i] = adj[i, j]
+    return pop, adj
 
-    # evaluate
-    for i in range(popSize):
-        evaluate(pop[i])
-
-def outputInfo(genera):
-    print("generation: {0}".format(genera))
-    print(pop[0].gene)
-    print(pop[0].score)
-
+def stop(crossSize, time):
+    if crossSize == 0 or time > TIME_LIMIT:
+        return True
+    else:
+        return False
 
 if __name__ == "__main__":
     ##############################################
-    popSize = 1000
-    generation = 300000
-    selectSize = 2
-    lowerBound = 0
-    upperBound = 31 + 1
-    dim = 2
-    cityNum = 100
-    muRate = 0.15
-    parentSize = 100
-    bestScore = 20000
+    POPSIZE = 100
+    GENERATION = 300000
+    CITY_NUM = 100
+    FILENAME = "TSP.csv"
+    TIME_LIMIT = 12*60*60
     ##############################################
-    cities = []
-    pop = []
-    adj = np.zeros((cityNum, cityNum))
-    init()
-    pop.sort(key=lambda x: x.score)
-    for i in range(generation):
+    start = time.time()
+    crossSize = CITY_NUM/2
+    record = []
+    pop, adj = init(FILENAME, CITY_NUM, POPSIZE)
+    record.append(pop[0])
+    generation = 1
+    bestScore = 8000
+    bestGeneration = 1
+    while stop(crossSize, start-time.time()):
+        # 平均距离越短的段我们认为是较优段，遗传的时候应尽量保留较优段
         # select
-        for j in range(parentSize):
-            # parents = select(selectSize, pop[0:popSize])
-            parents = rankBasedSelect(selectSize, pop[0:popSize])
-            # generate offspring
-            for offs in multiplication(parents):
-                if np.random.rand() < muRate:
-                    mutation(offs)
-                pop.append(offs)
-        # eliminate
+        for parents in combinations(pop, 2):
+            pass
+        # TODO: selection strategy
+        # TODO: mutation strategy
         elimination(pop)
+        generation += 1
+        if generation-bestGeneration == 100 and pop[0].score == bestScore:
+            crossSize -= 1
         if pop[0].score < bestScore:
-            outputInfo(i)
+            print("generation: ", generation)
+            print(pop[0])
             bestScore = pop[0].score
+            bestGeneration = generation
 
