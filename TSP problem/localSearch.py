@@ -97,8 +97,7 @@ def doubleBridge(order):
             newOrder[j] = order[pos[i] - 1 - j + pos[i-1]]
     return newOrder
 
-
-def iterativeLocalSearch(solution, adj):
+def oneLocalSearch(solution, adj):
     bestScore = solution.score
     newSolution = firstMove(solution, adj)
     while newSolution.score < bestScore:
@@ -106,14 +105,26 @@ def iterativeLocalSearch(solution, adj):
         newSolution = firstMove(newSolution, adj)
     return newSolution
 
+def iterativeLocalSearch(solution, adj, iterNum):
+    pop = [solution]
+    newSolution = copy.deepcopy(solution)
+    for i in range(iterNum):
+        pop.append(oneLocalSearch(newSolution, adj))
+        newSolution = Solution(doubleBridge(pop[-1].order), adj)
+    return pop
+
+
 if __name__ == "__main__":
-    CITY_NUM = 10
-    FILENAME = "TSP.csv"
+    FILENAME = sys.argv[1]
+    CITY_NUM = sys.argv[2]
+    GENERATION = sys.argv[3]
+    RESULT_FILE = sys.argv[4]
 
     city = loadCity(FILENAME, CITY_NUM)
     adj = getAdjMatrix(city)
 
     solution = Solution(greedyTSP(city, adj), adj)
 
+    tofile(RESULT_FILE, GENERATION)
     inversion(solution.order)
     doubleBridge(solution.order)

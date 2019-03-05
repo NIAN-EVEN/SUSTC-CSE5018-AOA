@@ -2,12 +2,34 @@ import numpy as np
 import random, copy, time, sys
 from itertools import combinations
 from TSP import *
+from multiprocessing import Process, Queue
 from localSearch import *
 from greedy import *
 '''
 单独存储一个list记录每一代最好的个体，每一代结束后都进行一遍localsearch
 群体的iterative local search, 就是演化算法
 '''
+
+class Worker(Process):
+    def __init__(self, inQ, outQ):
+        super(Worker, self).__init__(target=self.start)
+        self.inQ = inQ
+        self.outQ = outQ
+
+    def run(self):
+        while True:
+            parents, adj, crossSize = inQ.get()
+            offs = reproduction(parents, adj, crossSize)
+            outQ.put(offs)
+
+def createWorker(num):
+    for i in range(num):
+        workers.append(Worker(inQ, outQ))
+        workers[i].start()
+
+def destroyWorker():
+    for w in workers:
+        w.terminate()
 
 def select(num, pop):
     seletedGroup = []
@@ -81,7 +103,6 @@ def crossover(order1, order2, crossSize):
         if newOrder2[pos[0]: pos[1]].count(newOrder2[i]) == 1:
             newOrder2[i] = exchange1[exchange2.index(newOrder2[i])]
 
-
     errorDetect(newOrder1)
     errorDetect(newOrder2)
 
@@ -89,11 +110,11 @@ def crossover(order1, order2, crossSize):
 
 def reproduction(parents, adj, crossSize):
     newOrder1, newOrder2 = crossover(parents[0].order, parents[1].order, crossSize)
-    return iterativeLocalSearch(Solution(newOrder1, adj), adj), iterativeLocalSearch(Solution(newOrder2, adj), adj)
+    return oneLocalSearch(Solution(newOrder1, adj), adj), oneLocalSearch(Solution(newOrder2, adj), adj)
 
 def mutation(solution, adj):
     newOrder = doubleBridge(solution.order)
-    return iterativeLocalSearch(Solution(newOrder, adj), adj)
+    return oneLocalSearch(Solution(newOrder, adj), adj)
 
 def init(filename, cityNum, popSize):
     city = loadCity(filename, cityNum)
@@ -104,7 +125,7 @@ def init(filename, cityNum, popSize):
     pop = []
     for i in range(popSize):
         order = np.random.permutation(cityNum).tolist()
-        solution = iterativeLocalSearch(Solution(order, adj), adj)
+        solution = oneLocalSearch(Solution(order, adj), adj)
         pop.append(solution)
     pop.sort(key=lambda x:x.score)
 
@@ -118,17 +139,21 @@ def stop(crossSize, time):
 
 if __name__ == "__main__":
     ##############################################
-    FILENAME = "TSP.csv"
-    POPSIZE =  10
-    GENERATION =  300000
-    CITY_NUM =  10
-    TIME_LIMIT =  12*60*60
-    MAX_STAY_NUM =  50
-    RESULT_FILE =  "GAresult.csv"
+    FILENAME = sys.argv[1]  # "TSP.csv"
+    POPSIZE = int(sys.argv[2])  # 100
+    GENERATION = int(sys.argv[3])  # 300000
+    CITY_NUM = int(sys.argv[4])  # 100
+    TIME_LIMIT = int(sys.argv[5])  # 12*60*60
+    MAX_STAY_NUM = int(sys.argv[6])  # 50
+    RESULT_FILE = sys.argv[7]  # "GAresult.csv"
+    PROCESS_NUM = sys.argv[8] # 10
     ##############################################
-    pop, adj = init(FILENAME, CITY_NUM, POPSIZE)
+    inQ = Queue()
+    outQ = Queue()
+    workers = []
     start = time.time()
-    crossSize = CITY_NUM/2
+    crossSize = CITY_NUM / 2
+    pop, adj = init(FILENAME, CITY_NUM, POPSIZE)
     generaSolution = [pop[0]]
     # stayRocord++ when position i is not better than before
     stayRecord = [0 for i in range(POPSIZE)]
@@ -136,14 +161,22 @@ if __name__ == "__main__":
     generation = 1
     bestScore = 8000
     bestGeneration = 1
+    createWorker(PROCESS_NUM)
     while stop(crossSize, start-time.time()):
         # 平均距离越短的段我们认为是较优段，遗传的时候应尽量保留较优段
         # select
+        count = 0
         for parents in combinations(pop, 2):
-            for off in reproduction(parents, adj, crossSize):
+            inQ.put(parents, adj, crossSize)
+            count += 1
+        for i in range(count):
+            offs = outQ.get()
+            for off in offs:
                 pop.append(off)
+        # delete
         pop.sort(key=lambda x: x.score)
-        del pop[POPSIZE+1, len(pop)+1]
+        del pop[POPSIZE:len(pop)]
+        # mutation
         for i in range(POPSIZE):
             if scoreRecord[i] > pop[i].score:
                 scoreRecord[i] = pop[i].score
@@ -161,4 +194,5 @@ if __name__ == "__main__":
             bestGeneration = generation
             print("generation: ", generation)
             print(pop[0])
+    destroyWorker()
     tofile(RESULT_FILE, generaSolution)
