@@ -79,7 +79,6 @@ def twoTimesInversion(order):
     return inversion(newOrder)
 
 def doubleBridge(order):
-    order = [1,2,3,4,5,6,7,8]
     cityNum = len(order)
     pos = [np.random.randint(cityNum)]
     for i in range(1, 4):

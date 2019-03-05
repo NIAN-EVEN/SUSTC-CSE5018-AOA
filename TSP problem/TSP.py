@@ -51,3 +51,8 @@ def errorDetect(order):
             #     sys.stderr.write(sta)
             sys.stderr.write("wrong order\n")
             exit(-1)
+
+def tofile(rstfile, pop):
+    with open(rstfile, 'x') as f:
+        for i, p in enumerate(pop):
+            f.write(str(i)+" "+str(p.order)+" "+str(p.score)+"\n")
