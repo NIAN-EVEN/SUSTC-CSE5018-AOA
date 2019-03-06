@@ -18,9 +18,9 @@ class Worker(Process):
 
     def run(self):
         while True:
-            parents, adj, crossSize = inQ.get()
+            parents, adj, crossSize = self.inQ.get()
             offs = reproduction(parents, adj, crossSize)
-            outQ.put(offs)
+            self.outQ.put(offs)
 
 def createWorker(num):
     for i in range(num):
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     TIME_LIMIT = int(sys.argv[5])  # 12*60*60
     MAX_STAY_NUM = int(sys.argv[6])  # 50
     RESULT_FILE = sys.argv[7]  # "GAresult.csv"
-    PROCESS_NUM = sys.argv[8] # 10
+    PROCESS_NUM = int(sys.argv[8]) # 10
     ##############################################
     inQ = Queue()
     outQ = Queue()
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     stayRecord = [0 for i in range(POPSIZE)]
     scoreRecord = [x.score for x in pop]
     generation = 1
-    bestScore = 8000
+    bestScore = pop[0].score
     bestGeneration = 1
     createWorker(PROCESS_NUM)
     while stop(crossSize, start-time.time()):
