@@ -1,84 +1,112 @@
-import copy, random
+import copy, time
 from greedy import *
 from TSP import *
-from itertools import combinations
+from itertools import combinations, permutations
+from multiprocessing import Process, Pool
 
-def firstMove(solution, adj):
-    # TODO: 写一个通用的firstmove算法
-    for pos in combinations(solution.order, 2):
-        newOrder = copy.deepcopy(solution.order)
-        tmp = newOrder[pos[0]]
-        newOrder[pos[0]] = newOrder[pos[1]]
-        newOrder[pos[1]] = tmp
+def swap(order, pos0, pos1):
+    tmp = order[pos0]
+    order[pos0] = order[pos1]
+    order[pos1] = tmp
+
+def adjacent_2_city_change(oldSolution, adj, firstMove=False):
+    order = oldSolution.order
+    cityNum = len(order)
+    bestSoFar = oldSolution
+    evaluation_num = 0
+    for i in range(cityNum):
+        newOrder = copy.deepcopy(order)
+        swap(newOrder, i-1, i)
         newSolution = Solution(newOrder, adj)
-        if newSolution.score < solution.score:
-            return newSolution
-    return solution
+        evaluation_num += 1
+        if newSolution.score < bestSoFar.score:
+            bestSoFar = newSolution
+            if firstMove:
+                return bestSoFar, evaluation_num
+    return bestSoFar, evaluation_num
 
-def adjacent2CityChange(order):
+def arbitrary_2_city_change(oldSolution, adj, firstMove=False):
+    order = oldSolution.order
+    bestSoFar = oldSolution
     cityNum = len(order)
-    pos = [random.sample(list(range(cityNum)), 1)]
-    pos.append(pos[0]-1)
-    newOrder = copy.deepcopy(order)
-    tmp = newOrder[pos[0]]
-    newOrder[pos[0]] = newOrder[pos[1]]
-    newOrder[pos[1]] = tmp
-    errorDetect(newOrder)
-    return newOrder
+    evaluation_num = 0
+    for pos in combinations(list(range(cityNum)), 2):
+        newOrder = copy.deepcopy(order)
+        swap(newOrder, pos[0], pos[1])
+        newSolution = Solution(newOrder, adj)
+        evaluation_num += 1
+        if newSolution.score < bestSoFar.score:
+            bestSoFar = newSolution
+            if firstMove:
+                return bestSoFar, evaluation_num
+    return bestSoFar, evaluation_num
 
-def arbitrary2CityChange(order):
+def insertion(oldSolution, adj, firstMove=False):
+    order = oldSolution.order
+    bestSoFar = oldSolution
     cityNum = len(order)
-    pos = random.sample(list(range(cityNum)), 2)
-    newOrder = copy.deepcopy(order)
-    tmp = newOrder[pos[0]]
-    newOrder[pos[0]] = newOrder[pos[1]]
-    newOrder[pos[1]] = tmp
-    errorDetect(newOrder)
-    return newOrder
+    evaluation_num = 0
+    for pos0 in range(cityNum):
+        for pos1 in range(cityNum):
+            if pos0 == pos1:
+                continue
+            newOrder = copy.deepcopy(order)
+            ct = newOrder.pop(pos0)
+            newOrder.insert(pos1, ct)
+            newSolution = Solution(newOrder, adj)
+            evaluation_num += 1
+            if newSolution.score < bestSoFar.score:
+                bestSoFar = newSolution
+                if firstMove:
+                    return bestSoFar, evaluation_num
+    return bestSoFar, evaluation_num
 
-def insertion(order):
+def arbitrary_3_city_change(oldSolution, adj, firstMove=False):
+    order = oldSolution.order
+    bestSoFar = oldSolution
     cityNum = len(order)
-    pos0 = random.sample(list(range(cityNum)), 1)
-    pos1 = random.sample(list(range(cityNum-1)), 1)
-    # TODO: exam pos1 == pos0
-    newOrder = copy.deepcopy(order)
-    idx = newOrder.pop(pos0)
-    newOrder.insert(pos1, idx)
-    errorDetect(newOrder)
-    return newOrder
+    evaluation_num = 0
+    for combi in combinations(list(range(cityNum)), 3):
+        for perm in permutations(combi, 3):
+            if combi == perm:
+                continue
+            newOrder = copy.deepcopy(order)
+            for pos0, pos1 in zip(combi, perm):
+                newOrder[pos0] = order[pos1]
+            newSolution = Solution(newOrder, adj)
+            evaluation_num += 1
+            if newSolution.score < bestSoFar.score:
+                bestSoFar = newSolution
+                if firstMove:
+                    return bestSoFar, evaluation_num
+    return bestSoFar, evaluation_num
 
-def arbitrary3CityChange(order):
+def inversion(oldSolution, adj, firstMove=False):
+    order = oldSolution.order
+    bestSoFar = oldSolution
     cityNum = len(order)
-    pos = random.sample(list(range(cityNum)), 3)
-    newOrder = copy.deepcopy(order)
-    tmp = newOrder[pos[0]]
-    if random.random() < 0.5:
-        newOrder[pos[0]] = newOrder[pos[2]]
-        newOrder[pos[2]] = newOrder[pos[1]]
-        newOrder[pos[1]] = tmp
-    else:
-        newOrder[pos[0]] = newOrder[pos[1]]
-        newOrder[pos[1]] = newOrder[pos[2]]
-        newOrder[pos[2]] = tmp
-    errorDetect(newOrder)
-    return newOrder
+    evaluation_num = 0
+    for pos in combinations(list(range(cityNum)), 2):
+        pos0 = min(pos)
+        pos1 = max(pos)+1
+        newOrder = copy.deepcopy(order)
+        for i in range(pos0, pos1):
+            newOrder[i] = order[pos1 - 1 - (i - pos0)]
+        newSolution = Solution(newOrder, adj)
+        evaluation_num += 1
+        if newSolution.score < bestSoFar.score:
+            bestSoFar = newSolution
+            if firstMove:
+                return bestSoFar, evaluation_num
+    return bestSoFar, evaluation_num
 
-def inversion(order):
-    cityNum = len(order)
-    pos = random.sample(list(range(cityNum)), 2)
-    pos.sort()
-    newOrder = copy.deepcopy(order)
-    for i in range(pos[0], pos[1]):
-        newOrder[i] = order[pos[1]-1-i+pos[0]]
-    errorDetect(newOrder)
-    return newOrder
-
-def twoTimesInversion(order):
-    # TODO 检查两次交叉的路径需要不一样
-    newOrder = inversion(order)
-    return inversion(newOrder)
+def two_times_inversion(oldSolution, adj, firstMove=False):
+    newSolution1, evaluation_num1 = inversion(oldSolution, adj, firstMove)
+    newSolution2, evaluation_num2 = inversion(newSolution1, adj, firstMove)
+    return newSolution2, evaluation_num2+evaluation_num1
 
 def doubleBridge(order):
+    # TODO: test
     cityNum = len(order)
     pos = [np.random.randint(cityNum)]
     for i in range(1, 4):
@@ -97,34 +125,63 @@ def doubleBridge(order):
             newOrder[j] = order[pos[i] - 1 - j + pos[i-1]]
     return newOrder
 
-def oneLocalSearch(solution, adj):
-    bestScore = solution.score
-    newSolution = firstMove(solution, adj)
-    while newSolution.score < bestScore:
-        bestScore = newSolution.score
-        newSolution = firstMove(newSolution, adj)
-    return newSolution
-
-def iterativeLocalSearch(solution, adj, iterNum):
+def iterativeLocalSearch(solution, adj, func, firstMove):
     pop = [solution]
-    newSolution = copy.deepcopy(solution)
-    for i in range(iterNum):
-        pop.append(oneLocalSearch(newSolution, adj))
-        newSolution = Solution(doubleBridge(pop[-1].order), adj)
-    return pop
+    oldSolution = copy.deepcopy(solution)
+    evaluation_num = 0
+    while True:
+        newSolution, eval_num = func(oldSolution, adj, firstMove)
+        evaluation_num += eval_num
+        if oldSolution.score <= newSolution.score:
+            pop.append(newSolution)
+            break
+        if evaluation_num % 100 == 0:
+            pop.append(newSolution)
+        oldSolution = newSolution
+    return pop, evaluation_num
+
+def iterate_iterativeLocalSearch(evaluation_bound, solution, adj, func, firstMove):
+    evaluation_num = 0
+    iter_pop = []
+    while evaluation_num < evaluation_bound:
+        pop, eval_num = iterativeLocalSearch(solution, adj, func, firstMove)
+        evaluation_num += eval_num
+        iter_pop.extend(pop)
+    return iter_pop, evaluation_num
+
+
+def task(eval_bound, solution, adj, func, firstMove, filename):
+    print("%s is running..." % (filename))
+    start = time.time()
+    pop, eval_num = iterate_iterativeLocalSearch(eval_bound, solution, adj, func, firstMove)
+    tofile(filename, pop, start, eval_num)
 
 
 if __name__ == "__main__":
     FILENAME = sys.argv[1]
-    CITY_NUM = sys.argv[2]
-    GENERATION = sys.argv[3]
-    RESULT_FILE = sys.argv[4]
+    CITY_NUM = int(sys.argv[2])
+    EVAL_BOUND = int(sys.argv[3])
 
     city = loadCity(FILENAME, CITY_NUM)
     adj = getAdjMatrix(city)
+    funcs = [adjacent_2_city_change, arbitrary_2_city_change, insertion, arbitrary_3_city_change,
+             inversion, two_times_inversion]
 
-    solution = Solution(greedyTSP(city, adj), adj)
+    p = Pool(12)
 
-    tofile(RESULT_FILE, GENERATION)
-    inversion(solution.order)
-    doubleBridge(solution.order)
+    for func in funcs:
+        print("at func %s" % func.__name__)
+        greedy_file = func.__name__ + "_greedy"
+        random_file = func.__name__ + "_random"
+        for firstMove in (True, False):
+            print("first move is %s" % str(firstMove))
+            gre_file = greedy_file + "_firstMove" if firstMove else greedy_file + "_bestMove"
+            ran_file = random_file + "_firstMove" if firstMove else random_file + "_bestMove"
+            for i in range(CITY_NUM):
+                greedy_solution = Solution(greedyTSP(city, adj, i), adj)
+                random_solution = Solution(randomOrder(CITY_NUM), adj)
+                p.apply_async(task, args=(EVAL_BOUND, greedy_solution, adj, func, firstMove, gre_file))
+                p.apply_async(task, args=(EVAL_BOUND, random_solution, adj, func, firstMove, ran_file))
+    print("waitting for child process finish")
+    p.close()
+    p.join()
