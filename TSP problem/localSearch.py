@@ -1,8 +1,9 @@
-import copy, time
+import copy, time, logging
 from greedy import *
 from TSP import *
 from itertools import combinations, permutations
 from multiprocessing import Process, Pool
+
 
 def swap(order, pos0, pos1):
     tmp = order[pos0]
@@ -106,7 +107,6 @@ def two_times_inversion(oldSolution, adj, firstMove=False):
     return newSolution2, evaluation_num2+evaluation_num1
 
 def doubleBridge(order):
-    # TODO: test
     cityNum = len(order)
     pos = [np.random.randint(cityNum)]
     for i in range(1, 4):
@@ -132,6 +132,7 @@ def iterativeLocalSearch(solution, adj, func, firstMove):
     while True:
         newSolution, eval_num = func(oldSolution, adj, firstMove)
         evaluation_num += eval_num
+        # terminated condition: There is no better solution in neighbours
         if oldSolution.score <= newSolution.score:
             pop.append(newSolution)
             break
@@ -142,20 +143,26 @@ def iterativeLocalSearch(solution, adj, func, firstMove):
 
 def iterate_iterativeLocalSearch(evaluation_bound, solution, adj, func, firstMove):
     evaluation_num = 0
-    iter_pop = []
+    iter_pop = [(solution, evaluation_num)]
+    newSolution = solution
     while evaluation_num < evaluation_bound:
-        pop, eval_num = iterativeLocalSearch(solution, adj, func, firstMove)
+        pop, eval_num = iterativeLocalSearch(newSolution, adj, func, firstMove)
         evaluation_num += eval_num
-        iter_pop.extend(pop)
-    return iter_pop, evaluation_num
+        if pop[-1].score < iter_pop[-1][0].score:
+            iter_pop.append((pop[-1], evaluation_num))
+            newSolution = Solution(doubleBridge(pop[-1].order), adj)
+        elif pop[-1].score == newSolution.score:
+            break
+        else:
+            newSolution = pop[-1]
+    return iter_pop
 
 
 def task(eval_bound, solution, adj, func, firstMove, filename):
     print("%s is running..." % (filename))
     start = time.time()
-    pop, eval_num = iterate_iterativeLocalSearch(eval_bound, solution, adj, func, firstMove)
-    tofile(filename, pop, start, eval_num)
-
+    iter_pop = iterate_iterativeLocalSearch(eval_bound, solution, adj, func, firstMove)
+    tofile(filename, iter_pop, start)
 
 if __name__ == "__main__":
     FILENAME = sys.argv[1]
@@ -167,21 +174,21 @@ if __name__ == "__main__":
     funcs = [adjacent_2_city_change, arbitrary_2_city_change, insertion, arbitrary_3_city_change,
              inversion, two_times_inversion]
 
-    p = Pool(12)
-
-    for func in funcs:
-        print("at func %s" % func.__name__)
-        greedy_file = func.__name__ + "_greedy"
-        random_file = func.__name__ + "_random"
-        for firstMove in (True, False):
-            print("first move is %s" % str(firstMove))
-            gre_file = greedy_file + "_firstMove" if firstMove else greedy_file + "_bestMove"
-            ran_file = random_file + "_firstMove" if firstMove else random_file + "_bestMove"
-            for i in range(CITY_NUM):
-                greedy_solution = Solution(greedyTSP(city, adj, i), adj)
-                random_solution = Solution(randomOrder(CITY_NUM), adj)
+    p = Pool(45)
+    for i in range(CITY_NUM):
+        greedy_solution = Solution(greedyTSP(city, adj, i), adj)
+        random_solution = Solution(randomOrder(CITY_NUM), adj)
+        for func in funcs:
+            # print("at func %s" % func.__name__)
+            greedy_file = func.__name__ + "_greedy"
+            random_file = func.__name__ + "_random"
+            for firstMove in (True, False):
+                # print("first move is %s" % str(firstMove))
+                gre_file = greedy_file + "_firstMove" if firstMove else greedy_file + "_bestMove"
+                ran_file = random_file + "_firstMove" if firstMove else random_file + "_bestMove"
+                # task(EVAL_BOUND, greedy_solution, adj, func, firstMove, gre_file)
                 p.apply_async(task, args=(EVAL_BOUND, greedy_solution, adj, func, firstMove, gre_file))
                 p.apply_async(task, args=(EVAL_BOUND, random_solution, adj, func, firstMove, ran_file))
-    print("waitting for child process finish")
+    # print("waitting for child process finish")
     p.close()
     p.join()
