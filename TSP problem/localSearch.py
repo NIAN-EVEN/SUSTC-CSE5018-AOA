@@ -133,7 +133,7 @@ def iterativeLocalSearch(solution, adj, func, firstMove):
         newSolution, eval_num = func(oldSolution, adj, firstMove)
         evaluation_num += eval_num
         # terminated condition: There is no better solution in neighbours
-        if oldSolution.score <= newSolution.score:
+        if newSolution.score >= oldSolution.score:
             pop.append(newSolution)
             break
         if evaluation_num % 100 == 0:
@@ -150,19 +150,20 @@ def iterate_iterativeLocalSearch(evaluation_bound, solution, adj, func, firstMov
         evaluation_num += eval_num
         if pop[-1].score < iter_pop[-1][0].score:
             iter_pop.append((pop[-1], evaluation_num))
-            newSolution = Solution(doubleBridge(pop[-1].order), adj)
-        elif pop[-1].score == newSolution.score:
-            break
-        else:
-            newSolution = pop[-1]
+        newSolution = Solution(doubleBridge(pop[-1].order), adj)
     return iter_pop
-
 
 def task(eval_bound, solution, adj, func, firstMove, filename):
     print("%s is running..." % (filename))
     start = time.time()
     iter_pop = iterate_iterativeLocalSearch(eval_bound, solution, adj, func, firstMove)
     tofile(filename, iter_pop, start)
+
+funcs = [adjacent_2_city_change, arbitrary_2_city_change, arbitrary_3_city_change, insertion,
+             inversion, two_times_inversion]
+# funcs = [adjacent_2_city_change, arbitrary_2_city_change, arbitrary_3_city_change]
+# funcs = [insertion, inversion, two_times_inversion]
+
 
 if __name__ == "__main__":
     FILENAME = sys.argv[1]
@@ -171,10 +172,7 @@ if __name__ == "__main__":
 
     city = loadCity(FILENAME, CITY_NUM)
     adj = getAdjMatrix(city)
-    funcs = [adjacent_2_city_change, arbitrary_2_city_change, insertion, arbitrary_3_city_change,
-             inversion, two_times_inversion]
-
-    p = Pool(45)
+    p = Pool()
     for i in range(CITY_NUM):
         greedy_solution = Solution(greedyTSP(city, adj, i), adj)
         random_solution = Solution(randomOrder(CITY_NUM), adj)

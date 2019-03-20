@@ -26,6 +26,7 @@ class Solution():
         Y[-1] = cities[self.order[0]].loc[1]
         plt.scatter(X, Y)
         plt.plot(X, Y)
+        plt.title("%s (tour length=%d)" % (name, self.score))
         plt.savefig(directory + name)
         if show:
             plt.show()
