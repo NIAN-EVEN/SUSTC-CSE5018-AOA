@@ -1,8 +1,6 @@
-import copy, time, logging
-from greedy import *
-from TSP import *
-from itertools import combinations, permutations
-from multiprocessing import Pool
+import sys, logging, random
+import numpy as np
+
 
 def swap(order, pos0, pos1):
     tmp = order[pos0]
@@ -182,31 +180,21 @@ def on_server():
 
 funcs = [adjacent_2_city_change, arbitrary_2_city_change, arbitrary_3_city_change, insertion,
              inversion, two_times_inversion]
-# funcs = [adjacent_2_city_change, arbitrary_2_city_change, arbitrary_3_city_change]
-# funcs = [insertion, inversion, two_times_inversion]
-
 def dbg():
-    city = loadCity(FILENAME, CITY_NUM)
-    adj = getAdjMatrix(city)
-    for i in range(CITY_NUM):
-        greedy_solution = Solution(greedyTSP(city, adj, i), adj)
-        random_solution = Solution(randomOrder(CITY_NUM), adj)
-        for i in range(1):
-            # print("at func %s" % func.__name__)
-            greedy_file = funcs[i].__name__ + "_greedy"
-            random_file = funcs[i].__name__ + "_random"
-            for firstMove in (True, False):
-                # print("first move is %s" % str(firstMove))
-                gre_file = greedy_file + "_firstMove" if firstMove else greedy_file + "_bestMove"
-                ran_file = random_file + "_firstMove" if firstMove else random_file + "_bestMove"
-                # task(EVAL_BOUND, greedy_solution, adj, func, firstMove, gre_file)
-                task(EVAL_BOUND, greedy_solution, adj, funcs[i], firstMove, gre_file)
-                task(EVAL_BOUND, random_solution, adj, funcs[i], firstMove, ran_file)
+    # objective of this program is to minimize finish time of flow shop
+
+    # random generate a JOB_NUM*MACHINE_NUM table p,
+    # p[i][j] is processing time of job i on machine j
+    p = np.random.rand(JOB_NUM, MACHINE_NUM) * 100
+    # solution is a ordered list consist of index of tasks
+    # init a permutation
+    # calculate the corresponding finish time
+    # put it into localsearch function
+    pass
 
 if __name__ == "__main__":
-    FILENAME = sys.argv[1]
-    CITY_NUM = int(sys.argv[2])
-    EVAL_BOUND = int(sys.argv[3])
-    RECORD_STEP = 50
-    dbg()
+    JOB_NUM = int(sys.argv[1])
+    MACHINE_NUM = int(sys.argv[2])
 
+
+    pass
