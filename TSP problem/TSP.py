@@ -70,7 +70,7 @@ def errorDetect(order):
 def tofile(rstfile, pop, start):
     with open(rstfile, 'a') as f:
         f.write("using time: %f sec " % (time.time() - start))
-        f.write("evaluation num = %d\n" % pop[-1][1])
+        f.write("evaluation num = %d\n" % pop[-1][0])
         for p in pop:
-            f.write(str(p[0].order)+" | "+str(p[1])+" | "+str(p[0].score)+"\n")
+            f.write("order=%s,generation=%d,score=%f\n" % (str(p[1].order), p[0], p[1].score))
         f.write("\n")

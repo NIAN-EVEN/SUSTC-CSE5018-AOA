@@ -1,7 +1,6 @@
 .idea/
-AOA.ipynb
+*.ipynb
 __pycache__/
 .ipynb_checkpoints
 data/
-localsearch_data/
 graph/

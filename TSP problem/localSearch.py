@@ -124,39 +124,41 @@ def doubleBridge(order):
             newOrder[j] = order[pos[i] - 1 - j + pos[i-1]]
     return newOrder
 
-def localSearch(solution, adj, func, firstMove):
-    pop = [solution]
+def localSearch(solution, adj, func, evaluation_num, firstMove):
+    pop = []
     old_solution = copy.deepcopy(solution)
-    evaluation_num = 0
     while True:
         new_solution, eval_num = func(old_solution, adj, firstMove)
         evaluation_num += eval_num
         # terminated condition: There is no better solution in neighbours
         if new_solution.score >= old_solution.score:
-            pop.append(new_solution)
+            num = int(evaluation_num/RECORD_STEP)
+            if pop[-1][0] == num:
+                num += 1
+            pop.append((num, old_solution))
             break
         if evaluation_num / RECORD_STEP >= len(pop):
-            pop.append(new_solution)
+            pop.append((int(evaluation_num/RECORD_STEP), new_solution))
         old_solution = new_solution
     return pop, evaluation_num
 
 def iterativeLocalSearch(evaluation_bound, solution, adj, func, firstMove):
     evaluation_num = 0
-    iter_pop = [(solution, evaluation_num)]
+    iter_pop = [(evaluation_num, solution)]
     new_solution = solution
     while evaluation_num < evaluation_bound:
-        pop, eval_num = localSearch(new_solution, adj, func, firstMove)
-        evaluation_num += eval_num
-        if pop[-1].score < iter_pop[-1][0].score:
-            iter_pop.append((pop[-1], evaluation_num))
-        new_solution = Solution(doubleBridge(pop[-1].order), adj)
+        pop, evaluation_num = localSearch(new_solution, adj, func, evaluation_num, firstMove)
+        # if pop[-1][-1].score < iter_pop[-1][-1].score:
+        #     iter_pop.extend(pop)
+        iter_pop.extend(pop)
+        new_solution = Solution(doubleBridge(pop[-1][-1].order), adj)
     return iter_pop
 
 def task(eval_bound, solution, adj, func, firstMove, filename):
     print("%s is running..." % (filename))
     start = time.time()
     iter_pop = iterativeLocalSearch(eval_bound, solution, adj, func, firstMove)
-    # tofile(filename, iter_pop, start)
+    tofile(filename, iter_pop, start)
 
 def on_server():
     city = loadCity(FILENAME, CITY_NUM)
@@ -193,12 +195,14 @@ def dbg():
         random_solution = Solution(randomOrder(CITY_NUM), adj)
         for i in range(1):
             # print("at func %s" % func.__name__)
-            greedy_file = funcs[i].__name__ + "_greedy"
-            random_file = funcs[i].__name__ + "_random"
+            greedy_file = "data/" + funcs[i].__name__ + "_greedy"
+            random_file = "data/" + funcs[i].__name__ + "_random"
             for firstMove in (True, False):
                 # print("first move is %s" % str(firstMove))
                 gre_file = greedy_file + "_firstMove" if firstMove else greedy_file + "_bestMove"
                 ran_file = random_file + "_firstMove" if firstMove else random_file + "_bestMove"
+                gre_file += '.txt'
+                ran_file += '.txt'
                 # task(EVAL_BOUND, greedy_solution, adj, func, firstMove, gre_file)
                 task(EVAL_BOUND, greedy_solution, adj, funcs[i], firstMove, gre_file)
                 task(EVAL_BOUND, random_solution, adj, funcs[i], firstMove, ran_file)
