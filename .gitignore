@@ -1,4 +1,6 @@
-.idea
-AOA.ipynb
-__pycache__
+.idea/
+*.ipynb
+__pycache__/
 .ipynb_checkpoints
+data/
+graph/
