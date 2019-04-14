@@ -1,10 +1,5 @@
-import numpy as np
-import random, copy, time, sys
-from itertools import combinations
-from TSP import *
-from multiprocessing import Process, Queue
-from localSearch import *
-from greedy import *
+import copy
+from local_search import *
 '''
 单独存储一个list记录每一代最好的个体，每一代结束后都进行一遍localsearch
 群体的iterative local search, 就是演化算法

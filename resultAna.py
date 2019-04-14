@@ -1,73 +1,51 @@
+from TSP.TSP import *
 import matplotlib.pyplot as plt
-from TSP import *
-from localSearch import *
-import os
+import os, re
 import pandas as pd
 
-def get_row_data(filename, city_num, data_path):
-    city = loadCity(filename, city_num)
-    adj = getAdjMatrix(city)
+def get_row_data(data_path, repeat):
     files = os.listdir(os.getcwd() + data_path)
-    total_results = []
+    tuples = []
     for i, file in enumerate(files):
         print("%d: %s" % (i, file))
-        result = []
+        one_tuple = []
+        run = []
         with open(os.getcwd() + DATA_PATH + file, 'r') as f:
-            line = f.readline()
-            while line:
-                while line == "\n":
-                    line = f.readline()
-                    if len(group) != 0:
-                        result.append((group, time))
-                        group = []
-                if not line:
-                    break
-                if line.find("using") != -1:
-                    time = float(line[12:20])
-                    group = []
-                    line = f.readline()
-                info = line.strip().split('|')
-                order = eval(info[0])
-                solution = Solution(order, adj)
-                solution.generation = eval(info[1])
-                group.append(solution)
-                line = f.readline()
-        total_results.append(result)
-    return total_results
+            for line in f.readlines():
+                if line == '\n':
+                    continue
+                if line[0] == 'u':
+                    one_tuple.append(run)
+                    run = []
+                else:
+                    m = re.match(r'^evaluation=(\d+), score=(\d+), order=(.+)', line)
+                    dt = {'e':int(m.group(1)), 's':int(m.group(2)), 'o':m.group(3)}
+                    run.append(dt)
+        one_tuple.pop(0)
+        tuples.append(one_tuple)
+    return tuples
 
 def to_table(total_record, files):
     worest_score_record = []
     best_score_record = []
     mean_score_record = []
-    mean_time_record = []
-    mean_generation_record = []
     for i, method in enumerate(total_record):
-        best_solution = method[0][0][-1]
-        worest_solution = method[0][0][-1]
+        best_solution = method[0][0]
+        worest_solution = method[0][0]
         total_score = 0
-        total_time = 0
-        total_generation = 0
         for one_run in method:
-            total_time += one_run[1]
-            total_generation += one_run[0][-1].generation
-            total_score += one_run[0][-1].score
-            if one_run[0][-1].score < best_solution.score:
-                best_solution = one_run[0][-1]
-            if one_run[0][-1].score > best_solution.score:
-                worest_solution = one_run[0][-1]
-        # best_solution.toGraph(city, os.getcwd(), files[i], show=False)
-        mean_time = total_time / len(method)
+            total_score += one_run[-1]['s']
+            if one_run[-1]['s'] < best_solution['s']:
+                best_solution = one_run[-1]
+            if one_run[-1]['s'] > best_solution['s']:
+                worest_solution = one_run[-1]
         mean_score = total_score / len(method)
-        mean_time_record.append(mean_time)
-        mean_generation_record.append(total_generation / len(method))
-        worest_score_record.append(worest_solution.score)
-        best_score_record.append(best_solution.score)
+        worest_score_record.append(worest_solution['s'])
+        best_score_record.append(best_solution['s'])
         mean_score_record.append(mean_score)
     data = {"best_score": best_score_record,
             "mean_score": mean_score_record,
-            "worest_score": mean_score_record,
-            "mean_time": mean_time_record,
-            "mean_generation": mean_generation_record}
+            "worest_score": mean_score_record}
     table = pd.DataFrame(data, index=files)
     return table
 
@@ -86,27 +64,28 @@ def vary_of_generation(row_data, files):
     max_generation = 0
     for file, method in zip(files, row_data):
         for one_run in method:
-            solutions = one_run[0]
-            if solutions[-1].generation > max_generation:
-                max_generation = solutions[-1].generation
+            solutions = one_run[-1]
+            if solutions['e'] > max_generation:
+                max_generation = solutions['e']
     variations = []
     for file, method in zip(files, row_data):
-        max_record_length = 0
         generations = []
         for one_run in method:
-            solutions = one_run[0]
-            if len(solutions) > max_record_length:
-                max_record_length = len(solutions)
-                generations = [g.generation for g in solutions]
+            for solution in one_run:
+                if solution['e'] not in generations:
+                    generations.append(solution['e'])
+        generations.sort()
         score_record = []
         for g in generations:
             total_score = 0
             # 统计每个generation的100次平均得分
             for one_run in method:
-                solutions = one_run[0]
-                for i in range(len(solutions)):
-                    if i + 1 == len(solutions) or solutions[i].generation >= g:
-                        total_score += solutions[i].score
+                if one_run[-1]['e'] < g:
+                    total_score += one_run[-1]['s']
+                    continue
+                for solution in one_run:
+                    if solution['e'] >= g:
+                        total_score += solution['s']
                         break
             mean_score = total_score / len(method)
             score_record.append(mean_score)
@@ -126,7 +105,7 @@ def plot_generation_score(variations, labels):
             plt.plot(var["generation"], var["score"], drawstyle='steps-post', label=funcs[j].__name__)
         plt.title(labels[i])
         plt.legend()
-        plt.xscale("log")
+        plt.yscale("log")
         plt.show()
 
 def plot_statics(data_table, labels):
@@ -165,11 +144,12 @@ if __name__ == "__main__":
     FILENAME = "TSP.csv"
     CITY_NUM = 100
     BEST_TOUR = "best_tour"
-    DATA_PATH = "\\localsearch_data\\"
+    REPEAT = 100
+    DATA_PATH = "\\data\\TSP\\"
     labels = ["greedy bestMove", "greedy firstMove", "random bestMove", "random firstMove"]
 
     files = os.listdir(os.getcwd() + DATA_PATH)
-    total_results = get_row_data(FILENAME, CITY_NUM, DATA_PATH)
+    total_results = get_row_data(DATA_PATH, REPEAT)
     data_table = to_table(total_results, files)
     generation_score = vary_of_generation(total_results, files)
 
