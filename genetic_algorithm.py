@@ -1,5 +1,6 @@
 import copy
 from local_search import *
+import numpy as np
 '''
 单独存储一个list记录每一代最好的个体，每一代结束后都进行一遍localsearch
 群体的iterative local search, 就是演化算法
@@ -91,8 +92,6 @@ def crossover(order1, order2, crossSize):
         if newOrder2[pos[0]: pos[1]].count(newOrder2[i]) == 1:
             newOrder2[i] = exchange1[exchange2.index(newOrder2[i])]
 
-    errorDetect(newOrder1)
-    errorDetect(newOrder2)
 
     return newOrder1, newOrder2
 

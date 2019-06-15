@@ -3,14 +3,15 @@ import matplotlib.pyplot as plt
 import os, re
 import pandas as pd
 
-def get_row_data(data_path):
+def get_row_data(data_path, prefix):
     files = os.listdir(os.getcwd() + data_path)
     tuples = {}
     for i, file in enumerate(files):
-        print("%d: %s" % (i, file))
-        m = re.match(r'(.+).txt', file)
-        group = m.group(1)
+        format = prefix + r'(.+).txt'
+        m = re.match(format, file)
         if m != None:
+            print("%d: %s" % (i, file))
+            group = m.group(1)
             one_tuple = []
             run = []
             with open(os.getcwd() + data_path + file, 'r') as f:
@@ -91,6 +92,27 @@ def vary_of_generation(row_data, files):
         variations.append(table)
     return variations
 
+def get_time_of_each_run(data_path, prefix):
+    files = os.listdir(os.getcwd() + data_path)
+    tuples = {}
+    for i, file in enumerate(files):
+        format = prefix + r'(.+).txt'
+        m = re.match(format, file)
+        if m != None:
+            print("%d: %s" % (i, file))
+            group = m.group(1)
+            one_tuple = []
+            run = []
+            with open(os.getcwd() + data_path + file, 'r') as f:
+                total_time = 0
+                repeat = 0
+                for line in f.readlines():
+                    m = re.match(r'using time = ([\d+]\.[\d+])')
+                    if m != None:
+                        total_time += float(m.group(1))
+                        repeat += 1
+                mean_time = total_time / repeat
+            print(file, ":", mean_time)
 
 # def plot_substatics(data_table, labels):
 #     for combi in combinations(labels, 2):

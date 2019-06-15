@@ -1,6 +1,6 @@
 from data_analysis import *
 import matplotlib.pyplot as plt
-from TSP import *
+
 
 ##################### data analysis ############################################
 # todo: standardlise data analysis

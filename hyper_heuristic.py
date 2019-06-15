@@ -1,16 +1,5 @@
 from local_search import *
-
-def hyper_task(solution, funcs, firstMove, filename, kw, save=False):
-    Solution.score_matrix = kw['matrix']
-    Solution.fitness = kw['fitness']
-    print("%s is running..." % (filename))
-    start = time.time()
-    iter_pop, bestSoFar = iterative_online_choice(kw['evaluations'], solution, funcs, firstMove)
-    if save:
-        using_time = time.time() - start
-        tofile(filename, iter_pop, using_time)
-    else:
-        print(bestSoFar)
+from FlowShop import *
 
 def online_choice(evaluation_bound, score_bound, evaluation_num, solution, funcs, firstMove):
     pop = [solution]
@@ -45,3 +34,29 @@ def iterative_online_choice(evaluation_bound, solution, funcs, firstMove):
             bestSoFar = iter_pop[-1]
         old_solution = Solution(doubleBridge(pop[-1].order), evaluation=evaluation_num)
     return iter_pop, bestSoFar
+
+if __name__ == "__main__":
+    # use flowshop as example
+    filename = 'tai100_10.txt'
+    job_num = 100
+    machine_num = 10
+    init_method = johnson_greedy_order
+    firstMove = True
+    evaluation_bound = 10000
+    funcs = funcs_del_adj = [adjacent_2_item_change,
+                             arbitrary_2_item_change_del_adj,
+                             inversion_del_adj, insertion_del_adj]
+
+    # initialization
+    p = load_data(filename, job_num, machine_num)
+    Solution.fitness = makespan
+    Solution.score_matrix = p.copy()
+    solution = Solution(init_method(p.copy()))
+
+    # start running
+    start = time.time()
+    iter_pop, bestSoFar = iterative_online_choice(evaluation_bound, solution, funcs, firstMove)
+
+    # print result
+    using_time = time.time() - start
+    print(bestSoFar)

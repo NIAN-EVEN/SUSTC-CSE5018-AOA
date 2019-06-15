@@ -1,30 +1,8 @@
-from copy import deepcopy
+from Solution import *
 from itertools import combinations, permutations
 from numpy.random import randint
-import time
+import time, random
 # import numpy as np
-
-class Solution:
-    score_matrix = None
-    fitness = None
-    def __init__(self, order, score=None, evaluation=0):
-        self.order = order
-        if score == None:
-            self.score = Solution.fitness(order, Solution.score_matrix)
-        else:
-            self.score = score
-        self.evaluation_num = evaluation
-
-    def __str__(self):
-        return 'evaluation=%d, score=%d, order=%s' % (self.evaluation_num, self.score, str(self.order))
-
-def tofile(rstfile, pop, using_time):
-    with open(rstfile, 'a') as f:
-        f.write("using time = %f sec, evaluation num = %d\n" %
-                (using_time, pop[-1].evaluation_num))
-        for p in pop:
-            f.write("%s\n" % str(p))
-        f.write("\n")
 
 def task(solution, func, firstMove, filename, kw, save=False):
     Solution.score_matrix = kw['matrix']
@@ -43,6 +21,11 @@ def swap(order, pos0, pos1):
     order[pos0] = order[pos1]
     order[pos1] = tmp
 
+def better_check(s1, s2):
+    # todo: 把每个函数里面判断firstmove的部分独立出function
+    pass
+
+
 def adjacent_2_item_change(old_solution, firstMove=True):
     order = old_solution.order
     item_num = len(order)
@@ -53,10 +36,11 @@ def adjacent_2_item_change(old_solution, firstMove=True):
         swap(new_order, i-1, i)
         new_solution = Solution(new_order)
         evaluation_num += 1
-        if new_solution.score < bestSoFar.score:
-            bestSoFar = new_solution
-            if firstMove:
+        if new_solution.score <= bestSoFar.score:
+            if new_solution.score < bestSoFar.score and firstMove:
+                bestSoFar = new_solution
                 return bestSoFar, evaluation_num
+            bestSoFar = new_solution
     return bestSoFar, evaluation_num
 
 def arbitrary_2_item_change(old_solution, firstMove=True):
@@ -69,10 +53,30 @@ def arbitrary_2_item_change(old_solution, firstMove=True):
         swap(new_order, pos[0], pos[1])
         new_solution = Solution(new_order)
         evaluation_num += 1
-        if new_solution.score < bestSoFar.score:
-            bestSoFar = new_solution
-            if firstMove:
+        if new_solution.score <= bestSoFar.score:
+            if new_solution.score < bestSoFar.score and firstMove:
+                bestSoFar = new_solution
                 return bestSoFar, evaluation_num
+            bestSoFar = new_solution
+    return bestSoFar, evaluation_num
+
+def arbitrary_2_item_change_del_adj(old_solution, firstMove=True):
+    order = old_solution.order
+    bestSoFar = old_solution
+    item_num = len(order)
+    evaluation_num = 0
+    for pos in combinations(list(range(item_num)), 2):
+        if abs(pos[0] - pos[1]) == 1:
+            continue
+        new_order = order.copy()
+        swap(new_order, pos[0], pos[1])
+        new_solution = Solution(new_order)
+        evaluation_num += 1
+        if new_solution.score <= bestSoFar.score:
+            if new_solution.score < bestSoFar.score and firstMove:
+                bestSoFar = new_solution
+                return bestSoFar, evaluation_num
+            bestSoFar = new_solution
     return bestSoFar, evaluation_num
 
 def insertion(old_solution, firstMove=True):
@@ -89,10 +93,32 @@ def insertion(old_solution, firstMove=True):
             new_order.insert(pos1, ct)
             new_solution = Solution(new_order)
             evaluation_num += 1
-            if new_solution.score < bestSoFar.score:
-                bestSoFar = new_solution
-                if firstMove:
+            if new_solution.score <= bestSoFar.score:
+                if new_solution.score < bestSoFar.score and firstMove:
+                    bestSoFar = new_solution
                     return bestSoFar, evaluation_num
+                bestSoFar = new_solution
+    return bestSoFar, evaluation_num
+
+def insertion_del_adj(old_solution, firstMove=True):
+    order = old_solution.order
+    bestSoFar = old_solution
+    item_num = len(order)
+    evaluation_num = 0
+    for pos0 in range(item_num):
+        for pos1 in range(item_num):
+            if pos0 == pos1 or abs(pos0-pos1) == 1:
+                continue
+            new_order = order.copy()
+            ct = new_order.pop(pos0)
+            new_order.insert(pos1, ct)
+            new_solution = Solution(new_order)
+            evaluation_num += 1
+            if new_solution.score <= bestSoFar.score:
+                if new_solution.score < bestSoFar.score and firstMove:
+                    bestSoFar = new_solution
+                    return bestSoFar, evaluation_num
+                bestSoFar = new_solution
     return bestSoFar, evaluation_num
 
 def arbitrary_3_item_change(old_solution, firstMove=True):
@@ -109,10 +135,11 @@ def arbitrary_3_item_change(old_solution, firstMove=True):
                 new_order[pos0] = order[pos1]
             new_solution = Solution(new_order)
             evaluation_num += 1
-            if new_solution.score < bestSoFar.score:
-                bestSoFar = new_solution
-                if firstMove:
+            if new_solution.score <= bestSoFar.score:
+                if new_solution.score < bestSoFar.score and firstMove:
+                    bestSoFar = new_solution
                     return bestSoFar, evaluation_num
+                bestSoFar = new_solution
     return bestSoFar, evaluation_num
 
 def inversion(old_solution, firstMove=True):
@@ -128,10 +155,33 @@ def inversion(old_solution, firstMove=True):
             new_order[i] = order[pos1 - 1 - (i - pos0)]
         new_solution = Solution(new_order)
         evaluation_num += 1
-        if new_solution.score < bestSoFar.score:
-            bestSoFar = new_solution
-            if firstMove:
+        if new_solution.score <= bestSoFar.score:
+            if new_solution.score < bestSoFar.score and firstMove:
+                bestSoFar = new_solution
                 return bestSoFar, evaluation_num
+            bestSoFar = new_solution
+    return bestSoFar, evaluation_num
+
+def inversion_del_adj(old_solution, firstMove=True):
+    order = old_solution.order
+    bestSoFar = old_solution
+    item_num = len(order)
+    evaluation_num = 0
+    for pos in combinations(list(range(item_num)), 2):
+        if abs(pos[0] - pos[1]) == 1:
+            continue
+        pos0 = min(pos)
+        pos1 = max(pos)+1
+        new_order = order.copy()
+        for i in range(pos0, pos1):
+            new_order[i] = order[pos1 - 1 - (i - pos0)]
+        new_solution = Solution(new_order)
+        evaluation_num += 1
+        if new_solution.score <= bestSoFar.score:
+            if new_solution.score < bestSoFar.score and firstMove:
+                bestSoFar = new_solution
+                return bestSoFar, evaluation_num
+            bestSoFar = new_solution
     return bestSoFar, evaluation_num
 
 def two_times_inversion(old_solution, firstMove=True):
@@ -166,7 +216,7 @@ def localSearch(evaluation_bound, score_bound, evaluation_num, solution, func, f
         evaluation_num += eval_num
         new_solution.evaluation_num = evaluation_num
         # terminated condition: There is no better solution in neighbours
-        if new_solution.score >= old_solution.score:
+        if new_solution == old_solution:
             break
         if new_solution.score < score_bound and new_solution.score < pop[-1].score:
             pop.append(new_solution)
@@ -186,3 +236,21 @@ def iterativeLocalSearch(evaluation_bound, solution, func, firstMove):
             bestSoFar = iter_pop[-1]
         old_solution = Solution(doubleBridge(pop[-1].order), evaluation=evaluation_num)
     return iter_pop, bestSoFar
+
+def fitness(order, _):
+    return sum(order)
+
+def test_del_adj():
+    key = {"matrix": None, "fitness": fitness,
+           'record_step': 10, 'evaluations': 1000}
+    funcs = [arbitrary_2_item_change_del_adj, insertion_del_adj, inversion_del_adj]
+    moveMethod = [True, False]
+    Solution.fitness = fitness
+    order = list(range(10))
+    random.shuffle(order)
+    solution = Solution(order)
+    for f, func in enumerate(funcs):
+        task(solution, funcs[f], firstMove=False, filename=False, kw=key, save=False)
+
+if __name__ == "__main__":
+    test_del_adj()

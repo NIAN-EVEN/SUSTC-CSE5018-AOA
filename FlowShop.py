@@ -1,15 +1,21 @@
 from numpy import array, zeros
 from random import shuffle
 from sys import float_info
-from local_search import *
-from hyper_heuristic import *
-from data_analysis import *
-from multiprocessing import Pool
 import numpy as np
 import os, re
 
 
 ########################### basic operation ############################
+def load_data(filename, job_num, machine_num):
+    p = np.zeros(shape=(machine_num, job_num))
+    with open(filename, 'r') as f:
+        for i in range(machine_num):
+            n_machine = f.readline().strip('\n').strip()
+            time_on_n_machine = re.split(r'\s+', n_machine)
+            for j, t in enumerate(time_on_n_machine):
+                p[i, j] = int(t)
+    return p.T
+
 def makespan(job_order, p):
     machine_num = p.shape[1]
     machine_time = zeros(machine_num)

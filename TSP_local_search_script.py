@@ -1,5 +1,7 @@
-from TSP.TSP import *
+# todo: 文件夹和文件同名时会出现ModuleNotFoundError: No module named 'TSP.TSP'; 'TSP' is not a package
+# from TSP.TSP import *
 from multiprocessing import Pool
+from local_search import *
 
 def on_server():
     p = Pool()
